@@ -1,0 +1,78 @@
+﻿Function get-Filesharepermission
+{
+ <#
+.Synopsis
+This script help you to find fileshare permission on specified network share
+.Description
+This script help you to find fileshare permission on specified network share
+.PARAMETER filesharepath
+Enter the share path of which share permission details are required
+.PARAMETER destinationPath
+Enter the file path where output should be stored in .csv format
+.Inputs
+File share details
+.Example
+get-Filesharepermission -filesharepath \\ndcxenits401\New folder -outputfilepath D:\Sachn\123
+.OUTPUTS
+Generates output in .csv format
+#>
+    param(
+            [parameter (mandatory = $true,
+                       position = 1,
+                       helpmessage = "Enter file share path")]
+            [alias     ("path","sharepath")]$filesharepath,
+            [parameter (mandatory = $true,
+                        helpmessage = "Enter file share path")]
+            [alias     ("output")]$outputfilepath
+         )
+            begin {
+                    $n = 0
+                    $modoutputfilepath = $outputfilepath
+                    $modoutputfilepath= ($modoutputfilepath + ".csv")
+                    while ( Test-Path $modoutputfilepath -PathType Leaf )
+                        {
+                          $n++
+                          $modoutputfilepath = $outputfilepath + $n
+                          $modoutputfilepath= ($modoutputfilepath + ".csv")
+                        }
+                   }
+            Process {
+                        $ACLs = get-acl $filesharepath | ForEach-Object { $_.Access  } 
+                        foreach ($ACL in $ACLs)
+                            {
+                                $props = [ordered]@{"Folder Path" = $filesharepath ;
+                                                    "FileSystemRights" = $ACL.FileSystemRights;
+                                                    "IdentityReference" = $ACL.IdentityReference;
+                                                    "AccessControlType" = $ACL.AccessControlType;
+                                                    "IsInherited" = $ACL.IsInherited;
+                                                    "InheritanceFlags" = $ACL.InheritanceFlags;
+                                                    "PropagationFlags" = $ACL.PropagationFlags;
+                                                   }
+                                $x = New-Object -TypeName psobject -Property $props
+                                $x | export-csv -path $modoutputfilepath -Append
+	                        }#Gathered permission details of root share path
+
+                        $Folders = Get-ChildItem $filesharepath -recurse | where {$_.psiscontainer -eq $true}
+                        foreach ($Folder in $Folders)
+                            {
+	                            $ACLs = get-acl $Folder.fullname | ForEach-Object { $_.Access  } 
+	                            Foreach ($ACL in $ACLs)
+                                    {
+	                                    $props1 = [ordered]@{"Folder Path" = $folder.FullName;
+                                                            "FileSystemRights" = $ACL.FileSystemRights;
+                                                            "IdentityReference" = $ACL.IdentityReference;
+                                                            "AccessControlType" = $ACL.AccessControlType;
+                                                            "IsInherited" = $ACL.IsInherited;
+                                                            "InheritanceFlags" = $ACL.InheritanceFlags;
+                                                            "PropagationFlags" = $ACL.PropagationFlags;
+                                                           }                                            
+                                        $y = New-Object -TypeName psobject -Property $props1
+                                        $y | export-csv -path $modoutputfilepath -Append
+                                    }
+                            }#Gathered permission details of directories and sub-directories in specified shared path
+                    }
+            End {
+                    Write-host -ForegroundColor Yellow "Output stored in $modoutputfilepath CSV file"
+                }
+             
+}
